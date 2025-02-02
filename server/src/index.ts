@@ -6,7 +6,7 @@ import cookieParser from "cookie-parser";
 
 app.use(express.json());
 app.use(cors())
-app.unsubscribe(cookieParser())
+app.use(cookieParser())
 
 app.get('/', (req: Request, res: Response) => {
     console.log("GET /")

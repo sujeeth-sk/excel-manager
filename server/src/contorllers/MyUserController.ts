@@ -40,19 +40,20 @@ const loginCurrentUser = async (req: Request, res: Response) => {
     }
 
     jwt.sign(
-      { username, id: user._id }, // Using user._id from found user
-      secretSalt,
-      {},
-      (err, token) => {
-        if (err) {
-          return res.status(500).json({ message: "token generation failed" });
+        { username, _id: user._id }, // Changed 'id' to '_id' to match middleware
+        secretSalt, // Use same secret as middleware
+        { expiresIn: '1h' }, // Added expiration for security
+        (err, token) => {
+          if (err) {
+            res.status(500).json({ message: "Token generation failed" });
+            return;
+          }
+          res.cookie("token", token).json({
+            _id: user._id, // Changed 'id' to '_id' for consistency
+            username
+          });
         }
-        res.cookie("token", token).json({
-          id: user._id, // Using user._id from found user
-          username,
-        });
-      }
-    );
+      );
   } catch (error) {
     res.status(400).json({ message: "unable to login" });
   }
