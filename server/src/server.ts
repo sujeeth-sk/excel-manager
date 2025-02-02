@@ -1,5 +1,6 @@
 import express from 'express';
 import MyUserController from './routes/auth';
+import uploadController from './routes/upload';
 
 const app = express();
 
