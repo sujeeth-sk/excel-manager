@@ -20,7 +20,7 @@ export default function Login() {
     e.preventDefault();
     
     try {
-      const response = await axios.post('http://localhost:7000/api/login', formData);
+      const response = await axios.post(`${import.meta.env.SERVER}/login`, formData);
       localStorage.setItem('token', response.data.token);
       navigate('/dashboard');
     } catch (err) {

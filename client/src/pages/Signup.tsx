@@ -27,7 +27,7 @@ export default function Signup() {
     }
 
     try {
-      await axios.post('http://localhost:7000/api/signup', {
+      await axios.post(`${import.meta.env.SERVER}/login`, {
         username: formData.username,
         password: formData.password
       });
