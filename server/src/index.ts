@@ -3,12 +3,18 @@ import 'dotenv/config';
 import cors from "cors";
 import app from "./server"
 import cookieParser from "cookie-parser";
+import mongoose from "mongoose";
+
+mongoose
+  .connect(process.env.MONGO_URI || "")
+  .then(() => console.log("Connected to MongoDB"))
+  .catch((err) => console.error("Error connecting to MongoDB:", err));
 
 app.use(express.json());
 app.use(cors())
 app.use(cookieParser())
 
-app.get('/', (req: Request, res: Response) => {
+app.get('/', () => {
     console.log("GET /")
 })
 
