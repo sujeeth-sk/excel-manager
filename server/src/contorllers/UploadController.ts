@@ -1,21 +1,35 @@
 import { Request, Response } from "express";
-import { Workbook } from "exceljs";
+import { Workbook, Cell, Row } from "exceljs";
 import mongoose, { Types } from "mongoose";
 import FileSchema from "../models/File";
-import UserSchema from "../models/User";
+import SheetSchema from "../models/Sheet";
+// import UserSchema from "../models/User";
 import ValidationErrorSchema from "../models/ValidationError";
-import { File } from "multer";
+// import { File } from "multer";
 
-interface MulterRequest extends Request {
-  file?: Express.Multer.File; // Use Express.Multer.File type
-  user: {
-    // Now matches global declaration
-    _id: Types.ObjectId;
-    username: string;
-  };
+// 1. Declare type extensions for Express Request
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        _id: mongoose.Types.ObjectId;
+        username: string;
+      };
+      file?: Express.Multer.File;
+    }
+  }
 }
 
-export const uploadFile = async (req: MulterRequest, res: Response) => {
+// 2. Create a custom interface that extends Request
+export interface AuthenticatedRequest extends Request {
+  user: {
+    _id: mongoose.Types.ObjectId;
+    username: string;
+  };
+  file?: Express.Multer.File;
+}
+
+export const uploadFile = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
@@ -79,7 +93,7 @@ const parseRow = (row: any) => {
   const errors: { rowNumber: number; error: string }[] = [];
   const values: Record<string, any> = {};
 
-  row.eachCell((cell, colNumber) => {
+  row.eachCell((cell: Cell, colNumber: number) => {
     const value = cell.value;
     if (!value) {
       errors.push({
@@ -93,54 +107,76 @@ const parseRow = (row: any) => {
   return { values, errors };
 };
 
+interface SheetData {
+  sheetName: string;
+  numRows: number;
+  numValidRows: number;
+  numInvalidRows: number;
+  validationErrors: Array<{
+    rowNumber: number;
+    error: string;
+  }>;
+}
+
+interface SheetData {
+  sheetName: string;
+  numRows: number;
+  numValidRows: number;
+  numInvalidRows: number;
+  validationErrors: Array<{
+    rowNumber: number;
+    error: string;
+  }>;
+}
+
 const saveFileData = async (
   userId: mongoose.Types.ObjectId,
-  file: File,
-  sheetsData: any[]
+  file: Express.Multer.File,
+  sheetsData: SheetData[]
 ) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    const newFile = await FileSchema.create(
-      [
-        {
-          userId,
-          fileName: `${userId}_${Date.now()}.xlsx`,
-          originalFileName: file.originalname,
-          fileSize: file.size,
-          sheets: [],
-        },
-      ],
-      { session }
-    );
+    // 1. Create File document
+    const [newFile] = await FileSchema.create([{
+      userId,
+      fileName: `${userId.toString()}_${Date.now()}.xlsx`,
+      originalFileName: file.originalname,
+      fileSize: file.size,
+      sheets: []
+    }], { session });
 
+    // 2. Process sheets
     for (const sheet of sheetsData) {
-      const newSheet = await ValidationErrorSchema.create(
-        {
-          sheetName: sheet.sheetName,
-          numRows: sheet.numRows,
-          numValidRows: sheet.numValidRows,
-          numInvalidRows: sheet.numInvalidRows,
-          validationErrors: sheet.validationErrors,
-          fileId: newFile[0]._id,
-        },
-        { session }
-      );
+      // Create Sheet document
+      const [newSheet] = await SheetSchema.create([{
+        sheetName: sheet.sheetName,
+        numRows: sheet.numRows,
+        numValidRows: sheet.numValidRows,
+        numInvalidRows: sheet.numInvalidRows,
+        fileId: newFile._id
+      }], { session });
 
+      // 3. Create Validation Errors if any
       if (sheet.validationErrors.length > 0) {
         await ValidationErrorSchema.create(
           sheet.validationErrors.map((error) => ({
-            ...error,
-            sheetId: newSheet._id,
+            rowNumber: error.rowNumber,
+            error: error.error,
+            sheetId: newSheet._id // mongoose.Types.ObjectId
           })),
           { session }
         );
       }
+
+      // 4. Update File with sheet reference
+      newFile.sheets.push(newSheet._id);
+      await newFile.save({ session });
     }
 
     await session.commitTransaction();
-    return newFile[0];
+    return newFile;
   } catch (error) {
     await session.abortTransaction();
     throw error;
