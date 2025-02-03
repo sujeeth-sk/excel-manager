@@ -1,24 +1,6 @@
-// authMiddleware.ts
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-
-interface DecodedToken {
-  username: string;
-  _id: string;
-}
-
-interface Iuser {
-  username: string;
-  _id: string;
-}
-
-declare global {
-  namespace Express {
-    interface Request {
-      user?: Iuser;
-    }
-  }
-}
+import { Types } from "mongoose";
 
 const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
@@ -34,11 +16,11 @@ const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
     const decoded = jwt.verify(
       token,
       process.env.JWT_SECRET as string
-    ) as DecodedToken;
+    ) as { username: string; _id: string };
 
     req.user = {
       username: decoded.username,
-      _id: decoded._id,
+      _id: new Types.ObjectId(decoded._id), // Convert string to ObjectId
     };
 
     next();

@@ -14,15 +14,15 @@ export default function Login() {
     password: ''
   });
   const [error, setError] = useState<string>('');
-  const navigate = useNavigate();
+//   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
-      const response = await axios.post(`${import.meta.env.SERVER}/login`, formData);
+      const response = await axios.post(`${import.meta.env.SERVER}/auth/login`, formData);
       localStorage.setItem('token', response.data.token);
-      navigate('/dashboard');
+    //   navigate('/login');
     } catch (err) {
       setError('Invalid credentials');
     }

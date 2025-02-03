@@ -10,9 +10,7 @@ mongoose
   .then(() => console.log("Connected to MongoDB"))
   .catch((err) => console.error("Error connecting to MongoDB:", err));
 
-app.use(express.json());
-app.use(cors())
-app.use(cookieParser())
+
 
 app.get('/', () => {
     console.log("GET /")
